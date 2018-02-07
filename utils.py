@@ -17,7 +17,7 @@ import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
-def read_data(path):
+def read_data(path,is_train):
   """
   Read h5 format data file
   
@@ -28,10 +28,13 @@ def read_data(path):
   """
   with h5py.File(path, 'r') as hf:
     data = np.array(hf.get('data'))
-    label = np.array(hf.get('label'))
-    return data, label
+    if is_train:
+      label = np.array(hf.get('label'))
+      return data, label
+    else:
+      return data
 
-def preprocess(path, scale=3):
+def preprocess(path, config):
   """
   Preprocess single image file 
     (1) Read original image as YCbCr format (and grayscale as default)
@@ -42,18 +45,28 @@ def preprocess(path, scale=3):
     path: file path of desired file
     input_: image applied bicubic interpolation (low-resolution)
     label_: image with original resolution (high-resolution)
-  """
-  image = imread(path, is_grayscale=True)
-  label_ = modcrop(image, scale)
+  """ 
+  if config.is_train:
+    image = imread(path, is_grayscale=True)
+  
+    # Must be normalized
+    image = image / 255.
 
-  # Must be normalized
-  image = image / 255.
-  label_ = label_ / 255.
+    label_ = modcrop(image, config.scale)
+    input_ = scipy.ndimage.interpolation.zoom(label_, (1./config.scale), prefilter=False)
+    input_ = scipy.ndimage.interpolation.zoom(input_, (config.scale/1.), prefilter=False)
 
-  input_ = scipy.ndimage.interpolation.zoom(label_, (1./scale), prefilter=False)
-  input_ = scipy.ndimage.interpolation.zoom(input_, (scale/1.), prefilter=False)
+    return input_, label_
 
-  return input_, label_
+  else:
+    image = imread(path, is_grayscale=False)
+
+    # Must be normalized
+    image = image / 255.
+
+    input_ = scipy.ndimage.interpolation.zoom(image, (config.scale/1., config.scale/1., 1), prefilter=False)
+
+    return input_
 
 def prepare_data(sess, dataset):
   """
@@ -72,19 +85,22 @@ def prepare_data(sess, dataset):
 
   return data
 
-def make_data(sess, data, label):
+def make_data(sess, data, label=None):
   """
   Make input data as h5 file format
   Depending on 'is_train' (flag value), savepath would be changed.
   """
   if FLAGS.is_train:
     savepath = os.path.join(os.getcwd(), 'checkpoint/train.h5')
+    with h5py.File(savepath, 'w') as hf:
+      hf.create_dataset('data', data=data)
+      hf.create_dataset('label', data=label)
   else:
     savepath = os.path.join(os.getcwd(), 'checkpoint/test.h5')
+    with h5py.File(savepath, 'w') as hf:
+      hf.create_dataset('data', data=data)
 
-  with h5py.File(savepath, 'w') as hf:
-    hf.create_dataset('data', data=data)
-    hf.create_dataset('label', data=label)
+  
 
 def imread(path, is_grayscale=True):
   """
@@ -132,7 +148,7 @@ def input_setup(sess, config):
 
   if config.is_train:
     for i in range(len(data)):
-      input_, label_ = preprocess(data[i], config.scale)
+      input_, label_ = preprocess(data[i], config)
 
       if len(input_.shape) == 3:
         h, w, _ = input_.shape
@@ -151,8 +167,13 @@ def input_setup(sess, config):
           sub_input_sequence.append(sub_input)
           sub_label_sequence.append(sub_label)
 
+    arrdata = np.asarray(sub_input_sequence) # [?, 33, 33, 1]
+    arrlabel = np.asarray(sub_label_sequence) # [?, 21, 21, 1]
+    make_data(sess, arrdata, arrlabel)
+
   else:
-    input_, label_ = preprocess(data[0], config.scale)
+    input1 = preprocess(data[0], config)
+    input_ = input1[:,:,0]
 
     if len(input_.shape) == 3:
       h, w, _ = input_.shape
@@ -166,26 +187,22 @@ def input_setup(sess, config):
       for y in range(0, w-config.image_size+1, config.stride):
         ny += 1
         sub_input = input_[x:x+config.image_size, y:y+config.image_size] # [33 x 33]
-        sub_label = label_[x+int(padding):x+int(padding)+config.label_size, y+int(padding):y+int(padding)+config.label_size] # [21 x 21]
         
         sub_input = sub_input.reshape([config.image_size, config.image_size, 1])  
-        sub_label = sub_label.reshape([config.label_size, config.label_size, 1])
-
+        
         sub_input_sequence.append(sub_input)
-        sub_label_sequence.append(sub_label)
 
+    arrdata = np.asarray(sub_input_sequence) # [?, 33, 33, 1]
+    make_data(sess, arrdata)
   """
   len(sub_input_sequence) : the number of sub_input (33 x 33 x ch) in one image
   (sub_input_sequence[0]).shape : (33, 33, 1)
   """
   # Make list to numpy array. With this transform
-  arrdata = np.asarray(sub_input_sequence) # [?, 33, 33, 1]
-  arrlabel = np.asarray(sub_label_sequence) # [?, 21, 21, 1]
-
-  make_data(sess, arrdata, arrlabel)
+  
 
   if not config.is_train:
-    return nx, ny
+    return nx, ny, input1
     
 def imsave(image, path):
   return scipy.misc.imsave(path, image)

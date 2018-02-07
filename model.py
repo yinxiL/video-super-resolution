@@ -61,14 +61,14 @@ class SRCNN(object):
     if config.is_train:
       input_setup(self.sess, config)
     else:
-      nx, ny = input_setup(self.sess, config)
+      nx, ny, _ = input_setup(self.sess, config)
 
     if config.is_train:     
       data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "train.h5")
+      train_data, train_label = read_data(data_dir,is_train=True)
     else:
       data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "test.h5")
-
-    train_data, train_label = read_data(data_dir)
+      test_data = read_data(data_dir,is_train=False)
 
     # Stochastic gradient descent with the standard backpropagation
     self.train_op = tf.train.GradientDescentOptimizer(config.learning_rate).minimize(self.loss)
@@ -106,7 +106,7 @@ class SRCNN(object):
     else:
       print("Testing...")
 
-      result = self.pred.eval({self.images: train_data, self.labels: train_label})
+      result = self.pred.eval({self.images: test_data})
 
       result = merge(result, [nx, ny])
       result = result.squeeze()
