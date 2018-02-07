@@ -2,7 +2,8 @@ from utils import (
   read_data, 
   input_setup, 
   imsave,
-  merge
+  merge,
+  modcrop
 )
 
 import time
@@ -61,7 +62,7 @@ class SRCNN(object):
     if config.is_train:
       input_setup(self.sess, config)
     else:
-      nx, ny, _ = input_setup(self.sess, config)
+      nx, ny, image = input_setup(self.sess, config)
 
     if config.is_train:     
       data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "train.h5")
@@ -110,9 +111,11 @@ class SRCNN(object):
 
       result = merge(result, [nx, ny])
       result = result.squeeze()
+      image = modcrop(image, config.stride)
+      image[:, :, 0] = result
       image_path = os.path.join(os.getcwd(), config.sample_dir)
       image_path = os.path.join(image_path, "test_image.png")
-      imsave(result, image_path)
+      imsave(image, image_path)
 
   def model(self):
     conv1 = tf.nn.relu(tf.nn.conv2d(self.images, self.weights['w1'], strides=[1,1,1,1], padding='VALID') + self.biases['b1'])

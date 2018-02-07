@@ -47,7 +47,7 @@ def preprocess(path, config):
     label_: image with original resolution (high-resolution)
   """ 
   if config.is_train:
-    image = imread(path, is_grayscale=True)
+    image = imread(path, is_grayscale=True)  
   
     # Must be normalized
     image = image / 255.
@@ -60,13 +60,9 @@ def preprocess(path, config):
 
   else:
     image = imread(path, is_grayscale=False)
-
     # Must be normalized
-    image = image / 255.
-
-    input_ = scipy.ndimage.interpolation.zoom(image, (config.scale/1., config.scale/1., 1), prefilter=False)
-
-    return input_
+    image[:,:,0] = image[:,:,0] / 255.
+    return image
 
 def prepare_data(sess, dataset):
   """
@@ -172,8 +168,8 @@ def input_setup(sess, config):
     make_data(sess, arrdata, arrlabel)
 
   else:
-    input1 = preprocess(data[0], config)
-    input_ = input1[:,:,0]
+    image = preprocess(data[0], config)
+    input_ = image[:,:,0]
 
     if len(input_.shape) == 3:
       h, w, _ = input_.shape
@@ -202,9 +198,20 @@ def input_setup(sess, config):
   
 
   if not config.is_train:
-    return nx, ny, input1
-    
+    return nx, ny, image
+
+
 def imsave(image, path):
+  image[:,:,0] = image[:,:,0] * 255.
+  h, w, _ = np.shape(image)
+  for i in range(h):
+    for j in range(w):
+      r = image[i,j,0] + 1.402 * (image[i,j,2]-128) -20
+      g = image[i,j,0] - .34414 * (image[i,j,1]-128) -  .71414 * (image[i,j,2]-128) -20
+      b = image[i,j,0] + 1.772 * (image[i,j,1]-128) -20
+      image[i,j,0] = r
+      image[i,j,1] = g
+      image[i,j,2] = b
   return scipy.misc.imsave(path, image)
 
 def merge(images, size):
