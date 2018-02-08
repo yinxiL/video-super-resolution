@@ -71,7 +71,7 @@ class SRCNN(object):
     # Stochastic gradient descent with the standard backpropagation
     self.train_op = tf.train.GradientDescentOptimizer(config.learning_rate).minimize(self.loss)
 
-    tf.initialize_all_variables().run()
+    tf.global_variables_initializer().run()
     
     counter = 0
     start_time = time.time()
