@@ -62,14 +62,11 @@ class SRCNN(object):
     if config.is_train:
       input_setup(self.sess, config)
     else:
-      nx, ny, image = input_setup(self.sess, config)
+      nx, ny, sub_arr, pictures = input_setup(self.sess, config)
 
     if config.is_train:     
       data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "train.h5")
       train_data, train_label = read_data(data_dir,is_train=True)
-    else:
-      data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "test.h5")
-      test_data = read_data(data_dir,is_train=False)
 
     # Stochastic gradient descent with the standard backpropagation
     self.train_op = tf.train.GradientDescentOptimizer(config.learning_rate).minimize(self.loss)
@@ -106,16 +103,19 @@ class SRCNN(object):
 
     else:
       print("Testing...")
-
-      result = self.pred.eval({self.images: test_data})
-
-      result = merge(result, [nx, ny])
-      result = result.squeeze()
-      image = modcrop(image, config.stride)
-      image[:, :, 0] = result
-      image_path = os.path.join(os.getcwd(), config.sample_dir)
-      image_path = os.path.join(image_path, "test_image.png")
-      imsave(image, image_path)
+      for i in range(len(pictures)):
+        image = pictures[i]
+        result = self.pred.eval({self.images: sub_arr[i]})
+        result = merge(result, [nx[i], ny[i]])
+        result = result.squeeze()
+        h, w, _ = image.shape
+        h = ((h-33)//config.stride+1)*config.stride
+        w = ((w-33)//config.stride+1)*config.stride
+        image = image[0:h, 0:w, :]
+        image[:, :, 0] = result
+        image_path = os.path.join(os.getcwd(), config.sample_dir)
+        image_path = os.path.join(image_path, "test_image%03d.png"%i)
+        imsave(image, image_path)
 
   def model(self):
     conv1 = tf.nn.relu(tf.nn.conv2d(self.images, self.weights['w1'], strides=[1,1,1,1], padding='VALID') + self.biases['b1'])

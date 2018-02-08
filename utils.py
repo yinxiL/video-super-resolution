@@ -47,7 +47,8 @@ def preprocess(path, config):
     label_: image with original resolution (high-resolution)
   """ 
   if config.is_train:
-    image = imread(path, is_grayscale=True)  
+    image = imread(path, is_grayscale=False) 
+    image = image[:,:,0] 
   
     # Must be normalized
     image = image / 255.
@@ -61,7 +62,9 @@ def preprocess(path, config):
   else:
     image = imread(path, is_grayscale=False)
     # Must be normalized
+
     image[:,:,0] = image[:,:,0] / 255.
+
     return image
 
 def prepare_data(sess, dataset):
@@ -72,12 +75,11 @@ def prepare_data(sess, dataset):
     For train dataset, output data would be ['.../t1.bmp', '.../t2.bmp', ..., '.../t99.bmp']
   """
   if FLAGS.is_train:
-    filenames = os.listdir(dataset)
     data_dir = os.path.join(os.getcwd(), dataset)
     data = glob.glob(os.path.join(data_dir, "*.bmp"))
   else:
     data_dir = os.path.join(os.getcwd(), dataset)
-    data = glob.glob(os.path.join(data_dir, "*.jpg"))
+    data = glob.glob(os.path.join(data_dir, "*.bmp"))
 
   return data
 
@@ -90,13 +92,7 @@ def make_data(sess, data, label=None):
     savepath = os.path.join(os.getcwd(), 'checkpoint/train.h5')
     with h5py.File(savepath, 'w') as hf:
       hf.create_dataset('data', data=data)
-      hf.create_dataset('label', data=label)
-  else:
-    savepath = os.path.join(os.getcwd(), 'checkpoint/test.h5')
-    with h5py.File(savepath, 'w') as hf:
-      hf.create_dataset('data', data=data)
-
-  
+      hf.create_dataset('label', data=label) 
 
 def imread(path, is_grayscale=True):
   """
@@ -138,11 +134,12 @@ def input_setup(sess, config):
   else:
     data = prepare_data(sess, dataset="Test")
 
-  sub_input_sequence = []
-  sub_label_sequence = []
+  
   padding = abs(config.image_size - config.label_size) / 2 # 6
 
   if config.is_train:
+    sub_input_sequence = []
+    sub_label_sequence = []
     for i in range(len(data)):
       input_, label_ = preprocess(data[i], config)
 
@@ -168,37 +165,40 @@ def input_setup(sess, config):
     make_data(sess, arrdata, arrlabel)
 
   else:
-    image = preprocess(data[0], config)
-    input_ = image[:,:,0]
+    nx = np.zeros(len(data), dtype=np.int)
+    ny = np.zeros(len(data), dtype=np.int)   
+    pictures = []
+    sub_arr = []
 
-    if len(input_.shape) == 3:
-      h, w, _ = input_.shape
-    else:
-      h, w = input_.shape
+    for i in range(len(data)):     
+      sub_input_sequence = []
+      image = preprocess(data[i], config)
+      pictures.append(image)
+      input_ = image[:,:,0]
 
-    # Numbers of sub-images in height and width of image are needed to compute merge operation.
-    nx = ny = 0 
-    for x in range(0, h-config.image_size+1, config.stride):
-      nx += 1; ny = 0
-      for y in range(0, w-config.image_size+1, config.stride):
-        ny += 1
-        sub_input = input_[x:x+config.image_size, y:y+config.image_size] # [33 x 33]
-        
-        sub_input = sub_input.reshape([config.image_size, config.image_size, 1])  
-        
-        sub_input_sequence.append(sub_input)
+      if len(input_.shape) == 3:
+        h, w, _ = input_.shape
+      else:
+        h, w = input_.shape
 
-    arrdata = np.asarray(sub_input_sequence) # [?, 33, 33, 1]
-    make_data(sess, arrdata)
+      # Numbers of sub-images in height and width of image are needed to compute merge operation.
+      for x in range(0, h-config.image_size+1, config.stride):
+        nx[i] += 1; ny[i] = 0
+        for y in range(0, w-config.image_size+1, config.stride):
+          ny[i] += 1
+          sub_input = input_[x:x+config.image_size, y:y+config.image_size] # [33 x 33]
+          
+          sub_input = sub_input.reshape([config.image_size, config.image_size, 1])  
+          
+          sub_input_sequence.append(sub_input)
+
+      sub_arr.append(np.asarray(sub_input_sequence))
   """
   len(sub_input_sequence) : the number of sub_input (33 x 33 x ch) in one image
   (sub_input_sequence[0]).shape : (33, 33, 1)
   """
-  # Make list to numpy array. With this transform
-  
-
   if not config.is_train:
-    return nx, ny, image
+    return nx, ny, sub_arr, pictures
 
 
 def imsave(image, path):
