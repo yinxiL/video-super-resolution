@@ -1,6 +1,0 @@
-model_checkpoint_path: "SRCNN.model-25500"
-all_model_checkpoint_paths: "SRCNN.model-23500"
-all_model_checkpoint_paths: "SRCNN.model-24000"
-all_model_checkpoint_paths: "SRCNN.model-24500"
-all_model_checkpoint_paths: "SRCNN.model-25000"
-all_model_checkpoint_paths: "SRCNN.model-25500"
