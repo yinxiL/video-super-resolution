@@ -5,7 +5,8 @@ from utils import (
   merge,
   modcrop
 )
-
+import scipy.misc
+import scipy.ndimage
 import time
 import os
 import matplotlib.pyplot as plt
@@ -62,7 +63,8 @@ class SRCNN(object):
     if config.is_train:
       input_setup(self.sess, config)
     else:
-      nx, ny, sub_arr, pictures = input_setup(self.sess, config)
+      nx, ny, arr, pictures = input_setup(self.sess, config)
+      print(np.shape(arr))
 
     if config.is_train:     
       data_dir = os.path.join('./{}'.format(config.checkpoint_dir), "train.h5")
@@ -105,14 +107,18 @@ class SRCNN(object):
       print("Testing...")
       for i in range(len(pictures)):
         image = pictures[i]
-        result = self.pred.eval({self.images: sub_arr[i]})
-        result = merge(result, [nx[i], ny[i]])
-        result = result.squeeze()
+        imsave(image,'sample/init%03d.png'%i)
         h, w, _ = image.shape
         h = ((h-33)//config.stride+1)*config.stride
         w = ((w-33)//config.stride+1)*config.stride
         image = image[6:h+6, 6:w+6, :]
-        image[:, :, 0] = result
+
+        for j in range(3):
+          result = self.pred.eval({self.images: arr[i][:,:,:,j].reshape([nx[i]*ny[i], config.image_size, config.image_size, 1])})
+          result = merge(result, [nx[i], ny[i]])
+          result = result.squeeze()        
+          image[:, :, j] = result
+
         image_path = os.path.join(os.getcwd(), config.sample_dir)
         image_path = os.path.join(image_path, "test_image%03d.png"%i)
         imsave(image, image_path)

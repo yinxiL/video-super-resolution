@@ -9,6 +9,7 @@ import random
 import matplotlib.pyplot as plt
 
 from PIL import Image  # for loading images as YCbCr format
+from PIL import ImageEnhance 
 import scipy.misc
 import scipy.ndimage
 import numpy as np
@@ -63,7 +64,9 @@ def preprocess(path, config):
     image = imread(path, is_grayscale=False)
     # Must be normalized
 
-    image[:,:,0] = image[:,:,0] / 255.
+    image = scipy.ndimage.interpolation.zoom(image, (config.scale/1., config.scale/1., 1), prefilter=False)
+
+    image = image / 255.
 
     return image
 
@@ -168,14 +171,15 @@ def input_setup(sess, config):
     nx = np.zeros(len(data), dtype=np.int)
     ny = np.zeros(len(data), dtype=np.int)   
     pictures = []
-    sub_arr = []
+    arr = []
 
-    for i in range(len(data)):     
-      sub_input_sequence = []
+    for i in range(len(data)):
       image = preprocess(data[i], config)
       pictures.append(image)
-      input_ = image[:,:,0]
 
+      input_ = image
+      sub_input_sequence = []             
+      
       if len(input_.shape) == 3:
         h, w, _ = input_.shape
       else:
@@ -186,23 +190,24 @@ def input_setup(sess, config):
         nx[i] += 1; ny[i] = 0
         for y in range(0, w-config.image_size+1, config.stride):
           ny[i] += 1
-          sub_input = input_[x:x+config.image_size, y:y+config.image_size] # [33 x 33]
+          sub_input = input_[x:x+config.image_size, y:y+config.image_size, :] # [33 x 33]
           
-          sub_input = sub_input.reshape([config.image_size, config.image_size, 1])  
+          sub_input = sub_input.reshape([config.image_size, config.image_size, 3])  
           
           sub_input_sequence.append(sub_input)
 
-      sub_arr.append(np.asarray(sub_input_sequence))
+      arr.append(np.asarray(sub_input_sequence))
+      sub_input_sequence.clear()
   """
   len(sub_input_sequence) : the number of sub_input (33 x 33 x ch) in one image
   (sub_input_sequence[0]).shape : (33, 33, 1)
   """
   if not config.is_train:
-    return nx, ny, sub_arr, pictures
+    return nx, ny, np.asarray(arr), pictures
 
 
 def imsave(image, path):
-  image[:,:,0] = image[:,:,0] * 255.
+  image = image * 255.
   h, w, _ = np.shape(image)
   for i in range(h):
     for j in range(w):
@@ -212,6 +217,7 @@ def imsave(image, path):
       image[i,j,0] = r
       image[i,j,1] = g
       image[i,j,2] = b
+
   return scipy.misc.imsave(path, image)
 
 def merge(images, size):
