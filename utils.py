@@ -14,6 +14,8 @@ import scipy.misc
 import scipy.ndimage
 import numpy as np
 
+from skimage import transform,data
+
 import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
@@ -64,8 +66,11 @@ def preprocess(path, config):
     image = imread(path, is_grayscale=False)
     # Must be normalized
 
-    image = scipy.ndimage.interpolation.zoom(image, (config.scale/1., config.scale/1., 1), prefilter=False)
+    h, w, _ = image.shape
 
+    #no color change using this resize method
+    image = transform.resize(image, (h*config.scale/1., w*config.scale/1., 3))
+   
     image = image / 255.
 
     return image
@@ -105,7 +110,7 @@ def imread(path, is_grayscale=True):
   if is_grayscale:
     return scipy.misc.imread(path, flatten=True, mode='YCbCr').astype(np.float)
   else:
-    return scipy.misc.imread(path, mode='YCbCr').astype(np.float)
+    return scipy.misc.imread(path, mode='RGB').astype(np.float)
 
 def modcrop(image, scale=3):
   """
@@ -170,13 +175,10 @@ def input_setup(sess, config):
   else:
     nx = np.zeros(len(data), dtype=np.int)
     ny = np.zeros(len(data), dtype=np.int)   
-    pictures = []
     arr = []
 
     for i in range(len(data)):
       image = preprocess(data[i], config)
-      pictures.append(image)
-
       input_ = image
       sub_input_sequence = []             
       
@@ -203,21 +205,11 @@ def input_setup(sess, config):
   (sub_input_sequence[0]).shape : (33, 33, 1)
   """
   if not config.is_train:
-    return nx, ny, np.asarray(arr), pictures
+    return nx, ny, np.asarray(arr)
 
 
 def imsave(image, path):
   image = image * 255.
-  h, w, _ = np.shape(image)
-  for i in range(h):
-    for j in range(w):
-      r = image[i,j,0] + 1.402 * (image[i,j,2]-128) -20
-      g = image[i,j,0] - .34414 * (image[i,j,1]-128) -  .71414 * (image[i,j,2]-128) -20
-      b = image[i,j,0] + 1.772 * (image[i,j,1]-128) -20
-      image[i,j,0] = r
-      image[i,j,1] = g
-      image[i,j,2] = b
-
   return scipy.misc.imsave(path, image)
 
 def merge(images, size):

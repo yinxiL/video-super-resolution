@@ -63,7 +63,7 @@ class SRCNN(object):
     if config.is_train:
       input_setup(self.sess, config)
     else:
-      nx, ny, arr, pictures = input_setup(self.sess, config)
+      nx, ny, arr = input_setup(self.sess, config)
       print(np.shape(arr))
 
     if config.is_train:     
@@ -105,15 +105,9 @@ class SRCNN(object):
 
     else:
       print("Testing...")
-      for i in range(len(pictures)):
-        image = pictures[i]
-        imsave(image,'sample/init%03d.png'%i)
-        h, w, _ = image.shape
-        h = ((h-33)//config.stride+1)*config.stride
-        w = ((w-33)//config.stride+1)*config.stride
-        image = image[6:h+6, 6:w+6, :]
-
-        for j in range(3):
+      for i in range(len(arr)):
+        image = np.zeros((nx[i]*config.stride,ny[i]*config.stride,3))
+        for j in range(3):         
           result = self.pred.eval({self.images: arr[i][:,:,:,j].reshape([nx[i]*ny[i], config.image_size, config.image_size, 1])})
           result = merge(result, [nx[i], ny[i]])
           result = result.squeeze()        
