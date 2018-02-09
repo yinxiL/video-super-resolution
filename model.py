@@ -111,7 +111,7 @@ class SRCNN(object):
         h, w, _ = image.shape
         h = ((h-33)//config.stride+1)*config.stride
         w = ((w-33)//config.stride+1)*config.stride
-        image = image[0:h, 0:w, :]
+        image = image[6:h+6, 6:w+6, :]
         image[:, :, 0] = result
         image_path = os.path.join(os.getcwd(), config.sample_dir)
         image_path = os.path.join(image_path, "test_image%03d.png"%i)
