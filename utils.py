@@ -69,8 +69,14 @@ def preprocess(path, config):
     h, w, _ = image.shape
 
     #no color change using this resize method
-    image = transform.resize(image, (h*config.scale/1., w*config.scale/1., 3))
-   
+    image = transform.resize(image, (h//config.scale, w//config.scale, 3))
+    image = transform.resize(image, (h, w, 3))
+
+    #image = scipy.ndimage.interpolation.zoom(image, (1./config.scale, 1./config.scale, 1), prefilter=False)
+    #image = scipy.ndimage.interpolation.zoom(image, (config.scale/1., config.scale/1., 1), prefilter=False)
+    
+    scipy.misc.imsave(path, image)
+
     image = image / 255.
 
     return image
