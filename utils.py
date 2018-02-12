@@ -51,16 +51,13 @@ def preprocess(path, config):
   """ 
   if config.is_train:
     image = imread(path, is_grayscale=False) 
-    image = image[:,:,0] 
-  
-    # Must be normalized
-    image = image / 255.
+    h, w, _ = image.shape   
 
     label_ = modcrop(image, config.scale)
-    input_ = scipy.ndimage.interpolation.zoom(label_, (1./config.scale), prefilter=False)
-    input_ = scipy.ndimage.interpolation.zoom(input_, (config.scale/1.), prefilter=False)
+    input_ = transform.resize(label_, (h//config.scale, w//config.scale, 3))
+    input_ = transform.resize(input_, (h, w, 3))
 
-    return input_, label_
+    return input_[:,:,0] / 255., label_[:,:,0] / 255.
 
   else:
     image = imread(path, is_grayscale=False)
