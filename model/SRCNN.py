@@ -114,7 +114,7 @@ class SRCNN(object):
           image[:, :, j] = result
 
         image_path = os.path.join(os.getcwd(), config.sample_dir)
-        image_path = os.path.join(image_path, "test_image%03d.png"%i)
+        image_path = os.path.join(image_path, "test_output%03d.png"%i)
         imsave(image, image_path)
 
   def model(self):

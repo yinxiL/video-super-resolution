@@ -1,7 +1,6 @@
-from model import SRCNN
+from model.SRCNN import SRCNN
 from utils import input_setup
 
-import numpy as np
 import tensorflow as tf
 
 import pprint
@@ -16,8 +15,9 @@ flags.DEFINE_float("learning_rate", 1e-4, "The learning rate of gradient descent
 flags.DEFINE_integer("c_dim", 1, "Dimension of image color. [1]")
 flags.DEFINE_integer("scale", 3, "The size of scale factor for preprocessing input image [3]")
 flags.DEFINE_integer("stride", 21, "The size of stride to apply input image [14]")
-flags.DEFINE_string("checkpoint_dir", "checkpoint", "Name of checkpoint directory [checkpoint]")
-flags.DEFINE_string("sample_dir", "sample", "Name of sample directory [sample]")
+flags.DEFINE_string("checkpoint_dir", "output/checkpoint", "Name of checkpoint directory [checkpoint]")
+flags.DEFINE_string("sample_dir", "output/sample", "Name of sample directory [sample]")
+flags.DEFINE_string("model", "srcnn", "Which module to use [srcnn]")
 flags.DEFINE_boolean("is_train", False, "True for training, False for testing [True]")
 FLAGS = flags.FLAGS
 
@@ -32,15 +32,15 @@ def main(_):
     os.makedirs(FLAGS.sample_dir)
 
   with tf.Session() as sess:
-    srcnn = SRCNN(sess, 
+    if FLAGS.model == 'srcnn':
+      srcnn = SRCNN(sess, 
                   image_size=FLAGS.image_size, 
                   label_size=FLAGS.label_size, 
                   batch_size=FLAGS.batch_size,
                   c_dim=FLAGS.c_dim, 
                   checkpoint_dir=FLAGS.checkpoint_dir,
                   sample_dir=FLAGS.sample_dir)
-
-    srcnn.train(FLAGS)
+      srcnn.train(FLAGS)
     
 if __name__ == '__main__':
   tf.app.run()

@@ -3,13 +3,10 @@ Scipy version > 0.18 is needed, due to 'mode' option from scipy.misc.imread func
 """
 
 import os
-import glob
 import h5py
 import random
-import matplotlib.pyplot as plt
 
 from PIL import Image  # for loading images as YCbCr format
-from PIL import ImageEnhance 
 import scipy.misc
 import scipy.ndimage
 import numpy as np
@@ -74,12 +71,15 @@ def preprocess(path, config):
 
     #image = scipy.ndimage.interpolation.zoom(image, (1./config.scale, 1./config.scale, 1), prefilter=False)
     #image = scipy.ndimage.interpolation.zoom(image, (config.scale/1., config.scale/1., 1), prefilter=False)
-    
-    scipy.misc.imsave(path, image)
+    input_dir = os.path.join(os.getcwd(),config.sample_dir,os.path.split(path)[-1])
+    scipy.misc.imsave(input_dir, image)
 
     image = image / 255.
 
     return image
+
+def is_image_file(filename):
+    return any(filename.endswith(extension) for extension in [".bmp", ".png", ".jpg", ".jpeg"])
 
 def prepare_data(sess, dataset):
   """
@@ -90,10 +90,10 @@ def prepare_data(sess, dataset):
   """
   if FLAGS.is_train:
     data_dir = os.path.join(os.getcwd(), dataset)
-    data = glob.glob(os.path.join(data_dir, "*.bmp"))
+    data = [os.path.join(data_dir, x) for x in os.listdir(data_dir) if is_image_file(x)]
   else:
     data_dir = os.path.join(os.getcwd(), dataset)
-    data = glob.glob(os.path.join(data_dir, "*.bmp"))
+    data = [os.path.join(data_dir, x) for x in os.listdir(data_dir) if is_image_file(x)]
 
   return data
 
@@ -103,7 +103,7 @@ def make_data(sess, data, label=None):
   Depending on 'is_train' (flag value), savepath would be changed.
   """
   if FLAGS.is_train:
-    savepath = os.path.join(os.getcwd(), 'checkpoint/train.h5')
+    savepath = os.path.join(os.getcwd(), 'output/checkpoint/train.h5')
     with h5py.File(savepath, 'w') as hf:
       hf.create_dataset('data', data=data)
       hf.create_dataset('label', data=label) 
@@ -144,9 +144,9 @@ def input_setup(sess, config):
   """
   # Load data path
   if config.is_train:
-    data = prepare_data(sess, dataset="Train")
+    data = prepare_data(sess, dataset="dataset/Train")
   else:
-    data = prepare_data(sess, dataset="Test")
+    data = prepare_data(sess, dataset="dataset/Test")
 
   
   padding = abs(config.image_size - config.label_size) / 2 # 6
