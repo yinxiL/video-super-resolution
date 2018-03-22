@@ -1,7 +1,10 @@
-#Deep Learning in Super-resolution Reconstruction
+Deep Learning in Super-resolution Reconstruction
+==============
+This repository is a collection of paper review, classic tensorflow & pytorch cnn models' implementation, and my own ideas about existing problems and potential avenues.
 
----
+
 #Paper Review
+---
 
 Super-resolution (SR), which aims at recovering high-resolution images (or videos) from a low-resolution one, is a classical problem in computer vision.It has important value in monitoring equipment, satellite imagery, and medical imaging.
 
@@ -61,8 +64,9 @@ SRGAN (Photo-Realistic Single Image Super-Resolution Using a Generative Adversar
 
 The cost function used by the traditional method is generally the minimum mean square error (MSE), ie
 
----
+
 #Implementation
+---
 using Python 3.6.4, Tensorflow 1.1.0, Pytorch 0.3.1, cuda 8.0, cudnn 5.1
 
 ##1. Video Processing
